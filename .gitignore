@@ -1,0 +1,13 @@
+config.ini
+json_sample/
+examples/
+bot.txt
+log/
+__pycache__/
+.env
+Lib/site-packages/
+.vscode/
+cert/
+node_modules/
+Scripts/
+share/
