@@ -206,9 +206,9 @@ def error(update, context):
     """Log Errors caused by Updates."""
     resStr = "Something wrong. <a href='tg://user?id={}'>{}</a>\n#Error".format(622225198, 'Ringo (Lampgo)')
     update.message.reply_text(resStr, parse_mode="HTML", disable_web_page_preview=True)
-    # res = sentEmail(os.environ, context.error)
-    # print("[Info] " + res['msg'])
-    # print("[Error] " + res['error'])
+    res = sentEmail(os.environ, context.error)
+    print("[Info] " + res['msg'])
+    print("[Error] " + res['error'])
     logger.warning('Update "%s" caused error "%s"', update, context.error)
 
 def main():
@@ -225,7 +225,7 @@ def main():
     dispatcher.add_handler(MessageHandler(Filters.regex("(\r\n|\r|\n)"), future))
 
     # log all errors
-    # dispatcher.add_error_handler(error)
+    dispatcher.add_error_handler(error)
 
     # Start the Bot
     if (MODE == "DEV"):
