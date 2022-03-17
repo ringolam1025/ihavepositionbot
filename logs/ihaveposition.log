@@ -1,3 +1,1 @@
-[2022-03-14 22:23:44,614] p15228 {F:\Projects\ihaveposition\lib\site-packages\apscheduler\schedulers\base.py:166} INFO - Scheduler started
-[2022-03-14 22:23:49,516] p15228 {F:\Projects\ihaveposition\lib\site-packages\telegram\ext\updater.py:858} INFO - Received signal 2 (SIGINT), stopping...
-[2022-03-14 22:23:49,516] p15228 {F:\Projects\ihaveposition\lib\site-packages\apscheduler\schedulers\base.py:198} INFO - Scheduler has been shut down
+[2022-03-18 00:59:00,420] p4008 {F:\Projects\ihaveposition\lib\site-packages\apscheduler\schedulers\base.py:166} INFO - Scheduler started

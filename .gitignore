@@ -10,3 +10,5 @@ Lib/site-packages/
 node_modules/
 Scripts/
 share/
+pyvenv.cfg
+logs/ihaveposition.log
