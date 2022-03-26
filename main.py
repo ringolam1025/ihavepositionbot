@@ -297,8 +297,6 @@ def save_input(update, context) -> str:
     user_data = context.user_data
     user_data[context.user_data['input_key']] = update.message.text
     action = context.user_data['input_key'].lower()
-    print(action)
-
     userDBData = db.reference(str(userInfo['userid']))
     
     if action == "zone_range":
@@ -343,12 +341,6 @@ def save_input(update, context) -> str:
     
     return setting(update, context)
 
-def saveToDB():
-    res = []
-
-    
-    return res
-
 def end_describing(update, context) -> int:
     """End gathering of features and return to parent conversation."""
     user_data = context.user_data
@@ -373,7 +365,12 @@ def stop_nested(update, context) -> str:
     return STOPPING
 
 def help_command(update, context):
-    """Send a message when the command /help is issued."""
+    print("help_command")
+    userInfo = initUserInfo(update)
+    print(userInfo)
+
+    update.message.reply_text("Hi {}, your telegram ID is: {}".format(userInfo['first_name'], userInfo['userid']))
+
     update.effective_message.reply_html(        
         f'Calculate Method:\n(Capital * Acceptable_loss) / (Entry_Price - Stop_Loss)'
     )
@@ -400,7 +397,7 @@ def main():
     dispatcher.add_handler(MessageHandler(Filters.regex("(\r\n|\r|\n)"), future))
 
     ## Others Functions
-    # dispatcher.add_error_handler(error)
+    dispatcher.add_error_handler(error)
     dispatcher.add_handler(CommandHandler("help", help_command))
     
     conv_handler = ConversationHandler(
