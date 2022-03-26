@@ -2,8 +2,9 @@
   "dependencies": {
     "nodemon": "^2.0.15"
   },
-  "scripts": { 
+  "scripts": {     
     "start": "cd Scripts && activate && cd .. && nodemon --exec python main.py", 
+    "start_demo": "cd Scripts && activate && cd .. && nodemon --exec python nested.py", 
     "ngrok": "ngrok http 8000"
  }
 }

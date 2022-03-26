@@ -1,18 +1,14 @@
 #!/usr/bin/env python
 # pylint: disable=W0613
 # type: ignore[union-attr]
-# This program is dedicated to the public domain under the CC0 license.
 
 from cgi import print_arguments
 import os
-import html
-import json
 import logging
 import logging.config
 from pickle import FALSE, TRUE
-import traceback
-import configparser
-import time
+
+# from typing import Tuple, Dict, Any
 import datetime
 import re
 
@@ -20,17 +16,41 @@ from dotenv import load_dotenv
 config = load_dotenv(".env")
 
 from telegram import Update, ParseMode, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardRemove, ReplyKeyboardMarkup
-from telegram.ext import Updater, CommandHandler, MessageHandler, RegexHandler, Filters, ConversationHandler, CallbackQueryHandler, CallbackContext
+from telegram.ext import (
+    Updater,
+    CommandHandler,
+    MessageHandler,
+    ConversationHandler,
+    Filters,
+    CallbackQueryHandler,
+    CallbackContext
+)
 
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import db
 
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-
-
 from pyfunction import *
+
+
+# State definitions for descriptions conversation
+SELECTING_FEATURE, TYPING = map(chr, range(6, 8))
+# Meta states
+STOPPING, SHOWING = map(chr, range(8, 10))
+
+# Shortcut for ConversationHandler.END
+END = ConversationHandler.END
+
+(
+    ZONE_RANGE,
+    ACCEPTABLE_LOSS,
+    FOLLOW_WOOD,
+    CAPITAL,
+    START_OVER,
+    FEATURES,
+    CURRENT_FEATURE,
+    CURRENT_LEVEL,
+) = map(chr, range(10, 18))
 
 NAME = os.environ["NAME"]
 TOKEN = os.environ["TOKEN"]
@@ -59,13 +79,43 @@ def handleReply(update, context):
     userInfo = initUserInfoFromReply(update.callback_query)
     print(userInfo)
 
+    userDBData = db.reference(str(userInfo['userid']))
+    
     if query == 'cancel':
         update.callback_query.edit_message_text("Canceled!")
-    else:
-        ask = "Please enter {}".format(query.capitalize())
-        update.callback_query.edit_message_text(ask, reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton("Cancel", callback_data='cancel')]]))
-    
 
+    elif(query == "zone_range"):
+        ask = "Please enter Range"
+        update.callback_query.edit_message_text(ask, reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton("Cancel", callback_data='cancel')]]))
+
+    elif(query == "capital"):
+        ask = "Please enter capital"
+        update.callback_query.edit_message_text(ask, reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton("Cancel", callback_data='cancel')]]))
+        ttt = update.callback_query.answer()
+        print("=======")
+        print(ttt)
+        print("=======")
+
+    elif(query == "accepted_loss"):
+        ask = "Please enter accepted_loss"
+        update.callback_query.edit_message_text(ask, reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton("Cancel", callback_data='cancel')]]))
+
+    elif(query == "follow_wood"):
+        existing = userDBData.get()['follow_wood']
+        newOption = False if(existing) else True        
+        ask = "Success. seted to {}!".format("Follow" if(newOption) else "Not follow")
+        
+
+        updateDB = db.reference(str(userInfo['userid']))
+        updateDB.update({ 
+            'follow_wood':newOption
+        })
+        update.callback_query.edit_message_text(ask)
+
+    else:
+        ask = "Error. Please press Cancel"
+        update.callback_query.edit_message_text(ask, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Cancel", callback_data='cancel')]]))
+    
 def future(update, context):
     """Calculate Future"""
     print("==== Future ====")
@@ -82,8 +132,7 @@ def future(update, context):
     if allowedUser:
         res = {}
         ref = db.reference(str(userInfo['userid']))
-        captial = ref.get()['captial']
-        accepted_loss = ref.get()['accepted_loss']
+        capital = float(ref.get()['capital'])
         
         print('From Chat: {}, Message ID: {}\nFrom user: {} ({})'
             .format(userInfo['chat_id'], userInfo['message_id'], userInfo['username'], userInfo['userid']))        
@@ -112,8 +161,8 @@ def future(update, context):
                     res["entry"] = round(amt/res["perTran"], 7)
                     
                 else:
-                    m = re.search('(?i)(long|short)\s(.{3}.*)', line)
-                    res["entry"] = m.group(2)
+                    m = re.search('(?i)(long|short)\s(.{1}.*)', line)
+                    res["entry"] = float(m.group(2))
                 
                 res["side"] = m.group(1).upper()
 
@@ -121,87 +170,214 @@ def future(update, context):
                 res["light"] = light['green'] if m.group(1).upper() == "LONG" else light['red']
                 
             elif(idx==2):
-                m = re.search('(?i)(stop)\s(.{3}.*)', line)
-                # print("---- " + m.group(1) + " ----")
+                m = re.search('(?i)(stop)\s(.{1}.*)', line)
                 res['stop'] = float(m.group(2))
 
             elif(idx==3):
-                m = re.search('(?i)(tp)\s(.{3}.*)', line)
-                # print("---- " + m.group(1) + " ----")                
+                m = re.search('(?i)(tp)\s(.{1}.*)', line)
                 tmp = m.group(2).strip()
                 data = tmp.split(" ")
                 res['tp'] = data
 
             elif(idx==4):
                 m = re.search('(\d+\.?\d*)%', line)
-                # print("---- " + m.group(1) + " ----")                
-                res['risk'] = float(m.group(1))/100
-                
+                if (ref.get()['follow_wood']):
+                    res['risk'] = float(m.group(1))
+                else:
+                    res['risk'] = float(ref.get()['accepted_loss'])
+                    
         print(res)
 
         # Start Calulate perfered position
-        suggested_Postion = (captial*(res['risk']))/(res['entry'] - res['stop'])
-        
-        userStr = "Captial:         ${}\n".format(captial)       + \
-                  "Acceptable Loss: {}%\n".format(accepted_loss)
-                
-        orderStr = "Side:            {} {}\n".format(res["side"], res['light'])                           + \
-                   "Stop Loss:       ${}\n".format(res['stop'])                                       + \
-                   "Entry Price:     ${}\n".format(res['entry'])                                       + \
-                   "Total Position:  <b>{}</b> {}\n".format(round(suggested_Postion, 6),res['prep_name']) + \
-                   "Est. Loss        ${}\n".format(round(captial*(accepted_loss/100), 6),res['prep_name'])
-                   # "Formula:         (${}*{}%)/(${}-${})\n".format(captial, accepted_loss, res['entry'][0], res['stop'][0]) + \
-
+        suggested_Postion = (capital*(res['risk']/100))/(res['entry'] - res['stop'])
         subOrderStr = ""
+        TotalEstProfit = 0
+        TotalEstLoss = 0
+
         if (len(res['tp']) > 1):
             each_position = round(suggested_Postion/len(res['tp']),6)
             for idx, tp in enumerate(res['tp']):
                 subOrderAmount = (float(res['entry'])*each_position*-1)
                 subOrderProfit = round(subOrderAmount-(float(tp)*each_position*-1), 3)
                 subOrderLoss = round((float(res['stop'])*each_position*-1)-subOrderAmount, 3)
-                subOrderStr = subOrderStr + "<pre>{} - \n".format((idx+1))                                    + \
-                    "Take Profit:     ${}\n".format(tp)                                                     + \
-                    "Suggested:       <b>{}</b> {}\n".format(each_position,res['prep_name'])                + \
-                    "Est. PnL:\n\U0001F4B0 ${}      \U0001F4B8 -${}\n".format(subOrderProfit, subOrderLoss) + \
-                    "</pre>\n"
+
+                TotalEstProfit += subOrderProfit
+                TotalEstLoss += subOrderLoss
+
+                subOrderStr = subOrderStr + "<pre>{} - \n".format(idx+1)                                                           + \
+                                            "Position       : <b>{}</b> {}\n".format(each_position,res['prep_name'])               + \
+                                            "Take Profit    : ${}\n".format(round(float(tp),6))                                    + \
+                                            "Stop Loss      : ${}\n".format(res['stop'])                                           + \
+                                            "Est. PnL:\n\U0001F4B0 ${}      \U0001F4B8 -${}\n".format(subOrderProfit, subOrderLoss)+ \
+                                            "</pre>\n"
+                
+
+        userStr = "Capital         : ${}\n".format(capital)       + \
+                  "Acceptable Loss : {}%\n".format(res['risk'])
+
+        orderStr = "Side              : {} {}\n".format(res["side"], res['light'])                           + \
+                   "Entry Price       : ${}\n".format(res['entry'])                                          + \
+                   "Stop Loss         : ${}\n".format(res['stop'])                                           + \
+                   "Position          : <b>{}</b> {}\n".format(round(suggested_Postion, 6),res['prep_name']) + \
+                   "Total Est. Profit : ${}\n".format(round(TotalEstProfit, 6))                              + \
+                   "Total Est. Loss   : ${}\n".format(round(TotalEstLoss, 6))                   
         
-        replyStr = "<pre>Users Info:\n{} </pre>".format(userStr)              + \
-                "<pre>Order Info:\n{} </pre>".format(orderStr)             + \
-                "<pre>Sub-Order Breakdown:\n{} </pre>".format(subOrderStr)
+        replyStr = "<pre>Users Info:\n{} </pre>".format(userStr)  + \
+                   "<pre>Order Info:\n{} </pre>".format(orderStr)
+        
+        if (ref.get()['vip'] and len(res['tp']) > 1):
+            replyStr += "<pre>Breakdown:\n{} </pre>".format(subOrderStr)
 
         update.message.reply_text(replyStr, parse_mode=ParseMode.HTML)
     
     else:
         update.message.reply_text("Sorry! This feature not open to public!")
 
-def set(update, context):
+def setting(update, context):
     """Set default value"""
     print("setting")
     userInfo = initUserInfo(update)
-    print(userInfo)
+    # print(userInfo)
 
-    keyboard = [[InlineKeyboardButton("Captial", callback_data='captial'),
-                 # InlineKeyboardButton("Follow wood?", callback_data='follow_wood'),
-                 InlineKeyboardButton("Accepted Loss", callback_data='accepted_loss')]]
-    update.message.reply_text('Which value you want to update?', reply_markup = InlineKeyboardMarkup(keyboard))
+    userDBData = db.reference(str(userInfo['userid']))    
+    buttons = [
+                [
+                    InlineKeyboardButton("Capital: ${}".format(userDBData.get()['capital']), callback_data="CAPITAL"),
+                    InlineKeyboardButton("{}Follow Ar Wood".format("" if(userDBData.get()['follow_wood']) else "Not "), callback_data="FOLLOW_WOOD")
+                 ],
+                 [
+                    InlineKeyboardButton("Accepted Loss: {}%".format(userDBData.get()['accepted_loss']), callback_data="ACCEPTABLE_LOSS"),
+                    InlineKeyboardButton("Zone range: {}".format(userDBData.get()['zone_range']), callback_data="ZONE_RANGE")
+                 ],
+                 [
+                    InlineKeyboardButton("Done", callback_data=str(END))
+                 ]
+                ]
+    keyboard = InlineKeyboardMarkup(buttons)
+    text = 'Hi {}{}, Which value you want to update? '.format(userInfo['first_name'], "" if (userDBData.get()['vip']) else "(VIP)")
+    update.message.reply_text(text=text, reply_markup=keyboard)
+    context.user_data[START_OVER] = False
 
-    ref = db.reference('/')
-    ref.set({
-        userInfo['userid']:{
-                            'captial': 1300,
-                            'accepted_loss': 2,
-                            'follow_wood': 'Y',
-                            'join_date': datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-                        }
-        })    
+    return SELECTING_FEATURE
+
+def stop(update, context) -> int:
+    """End Conversation by command."""
+    update.message.reply_text('Okay, bye.')
+
+    return END
+
+def end(update, context) -> int:
+    """End conversation from InlineKeyboardButton."""
+    update.callback_query.answer()
+
+    text = 'See you around!'
+    update.callback_query.edit_message_text(text=text)
+
+    return END
+
+def ask_for_input(update, context) -> str:
+    """Prompt user to input data for selected feature."""
+    print("ask_for_input")
+    text = 'Okay, tell me.'
+    
+    context.user_data['input_key'] = update.callback_query.data
+
+    update.callback_query.answer()
+    update.callback_query.edit_message_text(text=text)
+
+    return TYPING
+
+def save_input(update, context) -> str:
+    """Save input for feature and return to feature selection."""
+    print("save_input")
+
+    userInfo = initUserInfo(update)
+    # print(userInfo)
+
+    user_data = context.user_data
+    user_data[context.user_data['input_key']] = update.message.text
+    action = context.user_data['input_key'].lower()
+    print(action)
+
+    userDBData = db.reference(str(userInfo['userid']))
+    
+    if action == "zone_range":
+        ask = "Done"
+        updateDB = db.reference(str(userInfo['userid']))
+        updateDB.update({ 
+            action: update.message.text
+        })
+        update.message.reply_text(ask)
+
+    elif(action == "capital"):
+        ask = "Done"
+        updateDB = db.reference(str(userInfo['userid']))
+        updateDB.update({ 
+            action: update.message.text
+        })
+        update.message.reply_text(ask)
+        
+    elif(action == "accepted_loss"):
+        updateDB = db.reference(str(userInfo['userid']))
+        updateDB.update({ 
+            action: update.message.text
+        })
+        update.message.reply_text(ask)
+
+    elif(action == "follow_wood"):
+        existing = userDBData.get()['follow_wood']
+
+        print(existing)
+        newOption = False if(existing) else True        
+        ask = "Success. seted to {}!".format("Follow" if(newOption) else "Not follow")
+
+        updateDB = db.reference(str(userInfo['userid']))
+        updateDB.update({ 
+            'follow_wood':newOption
+        })
+        update.message.reply_text(ask)
+
+    else:
+        ask = "Error. Please press Cancel"
+        # update.callback_query.edit_message_text(ask, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Cancel", callback_data='cancel')]]))
+    
+    return setting(update, context)
+
+def saveToDB():
+    res = []
+
+    
+    return res
+
+def end_describing(update, context) -> int:
+    """End gathering of features and return to parent conversation."""
+    user_data = context.user_data
+    level = user_data[CURRENT_LEVEL]
+    if not user_data.get(level):
+        user_data[level] = []
+    user_data[level].append(user_data[FEATURES])
+
+    # Print upper level menu
+    # if level == SELF:
+    #     user_data[START_OVER] = True
+    #     start(update, context)
+    # else:
+    #     select_level(update, context)
+
+    return END
+
+def stop_nested(update, context) -> str:
+    """Completely end conversation from within nested conversation."""
+    update.message.reply_text('Okay, bye.')
+
+    return STOPPING
 
 def help_command(update, context):
     """Send a message when the command /help is issued."""
     update.effective_message.reply_html(        
-        f'Calculate Method:\n(Captial * Acceptable_loss) / (Entry_Price - Stop_Loss)'
+        f'Calculate Method:\n(Capital * Acceptable_loss) / (Entry_Price - Stop_Loss)'
     )
     
-
 def error(update, context):
     """Log Errors caused by Updates."""
     resStr = "Something wrong. <a href='tg://user?id={}'>{}</a>\n#Error".format(622225198, 'Ringo (Lampgo)')
@@ -218,23 +394,38 @@ def main():
 
     updater = Updater(TOKEN, use_context=True)
     dispatcher = updater.dispatcher    
-    dispatcher.add_handler(CommandHandler("set", set))
-    dispatcher.add_handler(CommandHandler("future", future))
-    dispatcher.add_handler(CommandHandler("help", help_command))
-    dispatcher.add_handler(CallbackQueryHandler(handleReply))
+    # dispatcher.add_handler(CommandHandler("start", start))
+    
+    # dispatcher.add_handler(CallbackQueryHandler(handleReply))
     dispatcher.add_handler(MessageHandler(Filters.regex("(\r\n|\r|\n)"), future))
 
-    # log all errors
-    dispatcher.add_error_handler(error)
+    ## Others Functions
+    # dispatcher.add_error_handler(error)
+    dispatcher.add_handler(CommandHandler("help", help_command))
+    
+    conv_handler = ConversationHandler(
+        entry_points=[CommandHandler("setting", setting)],
+        states={
+            SELECTING_FEATURE: [
+                CallbackQueryHandler(ask_for_input, pattern='^(?!' + str(END) + ').*$')
+            ],
+            TYPING: [MessageHandler(Filters.text & ~Filters.command, save_input)],
+        },
+        fallbacks=[CommandHandler('stop', stop)],
+    )
+
+    dispatcher.add_handler(conv_handler)
+
 
     # Start the Bot
     if (MODE == "DEV"):
         # Testing
         updater.start_polling()
-    else:
+    elif (MODE == "PROD"):
         # Production
         updater.start_webhook(listen="0.0.0.0", port=int(PORT), url_path=TOKEN)
         updater.bot.setWebhook(HEROKULINK + TOKEN)
+
     updater.idle()
 
 if __name__ == '__main__':
