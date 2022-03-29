@@ -316,6 +316,7 @@ def save_input(update, context) -> str:
         update.message.reply_text(ask)
         
     elif(action == "accepted_loss"):
+        ask = "Done"
         updateDB = db.reference(str(userInfo['userid']))
         updateDB.update({ 
             action: update.message.text
@@ -324,8 +325,6 @@ def save_input(update, context) -> str:
 
     elif(action == "follow_wood"):
         existing = userDBData.get()['follow_wood']
-
-        print(existing)
         newOption = False if(existing) else True        
         ask = "Success. seted to {}!".format("Follow" if(newOption) else "Not follow")
 
