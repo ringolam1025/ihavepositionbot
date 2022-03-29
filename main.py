@@ -239,7 +239,7 @@ def setting(update, context):
     userInfo = initUserInfo(update)
     # print(userInfo)
 
-    userDBData = db.reference(str(userInfo['userid']))    
+    userDBData = db.reference(str(userInfo['userid'])) 
     buttons = [
                 [
                     InlineKeyboardButton("Capital: ${}".format(userDBData.get()['capital']), callback_data="CAPITAL"),
@@ -374,13 +374,31 @@ def help_command(update, context):
         f'Calculate Method:\n(Capital * Acceptable_loss) / (Entry_Price - Stop_Loss)'
     )
     
+def start(update, context):
+    datetime_dt = datetime.datetime.today()
+    datetime_str = datetime_dt.strftime("%Y%m%d%H%M%S")
+    userInfo = initUserInfo(update)
+
+    ref = db.reference('/' + str(userInfo['userid']))
+    ref.set({
+                "accepted_loss" : 2,
+                "capital" : 1500,
+                "follow_wood" : True,
+                "join_date" : datetime_str,
+                "vip" : False,
+                "zone_range" : 5
+            })
+    
+    ask = "Finished. Please use /setting to setting your personal setting. "
+    update.message.reply_text(ask)
+
 def error(update, context):
     """Log Errors caused by Updates."""
     resStr = "Something wrong. <a href='tg://user?id={}'>{}</a>\n#Error".format(622225198, 'Ringo (Lampgo)')
     update.message.reply_text(resStr, parse_mode="HTML", disable_web_page_preview=True)
-    res = sentEmail(os.environ, context.error)
-    print("[Info] " + res['msg'])
-    print("[Error] " + res['error'])
+    # res = sentEmail(os.environ, context.error)
+    # print("[Info] " + res['msg'])
+    # print("[Error] " + res['error'])
     logger.warning('Update "%s" caused error "%s"', update, context.error)
 
 def main():
@@ -390,7 +408,7 @@ def main():
 
     updater = Updater(TOKEN, use_context=True)
     dispatcher = updater.dispatcher    
-    # dispatcher.add_handler(CommandHandler("start", start))
+    dispatcher.add_handler(CommandHandler("start", start))
     
     # dispatcher.add_handler(CallbackQueryHandler(handleReply))
     dispatcher.add_handler(MessageHandler(Filters.regex("(\r\n|\r|\n)"), future))
