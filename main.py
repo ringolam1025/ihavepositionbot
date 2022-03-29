@@ -420,8 +420,10 @@ def main():
         updater.start_polling()
     elif (MODE == "PROD"):
         # Production
-        updater.start_webhook(listen="0.0.0.0", port=int(PORT), url_path=TOKEN)
-        updater.bot.setWebhook(HEROKULINK + TOKEN)
+        updater.start_webhook(listen="0.0.0.0",
+                              port=PORT,
+                              url_path=TOKEN, 
+                              webhook_url="https://" + NAME + ".herokuapp.com/" + TOKEN)
 
     updater.idle()
 
