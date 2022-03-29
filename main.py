@@ -194,22 +194,22 @@ def future(update, context):
         TotalEstProfit = 0
         TotalEstLoss = 0
 
-        if (len(res['tp']) > 1):
-            each_position = round(suggested_Postion/len(res['tp']),6)
-            for idx, tp in enumerate(res['tp']):
-                subOrderAmount = (float(res['entry'])*each_position*-1)
-                subOrderProfit = round(subOrderAmount-(float(tp)*each_position*-1), 3)
-                subOrderLoss = round((float(res['stop'])*each_position*-1)-subOrderAmount, 3)
+        #if (len(res['tp']) > 1):
+        each_position = round(suggested_Postion/len(res['tp']),6)
+        for idx, tp in enumerate(res['tp']):
+            subOrderAmount = (float(res['entry'])*each_position*-1)
+            subOrderProfit = round(subOrderAmount-(float(tp)*each_position*-1), 3)
+            subOrderLoss = round((float(res['stop'])*each_position*-1)-subOrderAmount, 3)
 
-                TotalEstProfit += subOrderProfit
-                TotalEstLoss += subOrderLoss
+            TotalEstProfit += subOrderProfit
+            TotalEstLoss += subOrderLoss
 
-                subOrderStr = subOrderStr + "<pre>{} - \n".format(idx+1)                                                           + \
-                                            "Position       : <b>{}</b> {}\n".format(each_position,res['prep_name'])               + \
-                                            "Take Profit    : ${}\n".format(round(float(tp),6))                                    + \
-                                            "Stop Loss      : ${}\n".format(res['stop'])                                           + \
-                                            "Est. PnL:\n\U0001F4B0 ${}      \U0001F4B8 -${}\n".format(subOrderProfit, subOrderLoss)+ \
-                                            "</pre>\n"
+            subOrderStr = subOrderStr + "<pre>{} - \n".format(idx+1)                                                           + \
+                                        "Position       : <b>{}</b> {}\n".format(each_position,res['prep_name'])               + \
+                                        "Take Profit    : ${}\n".format(round(float(tp),6))                                    + \
+                                        "Stop Loss      : ${}\n".format(res['stop'])                                           + \
+                                        "Est. PnL:\n\U0001F4B0 ${}      \U0001F4B8 -${}\n".format(subOrderProfit, subOrderLoss)+ \
+                                        "</pre>\n"
                 
 
         userStr = "Capital         : ${}\n".format(capital)       + \
