@@ -48,11 +48,15 @@ PORT=5000
 LOG_FILE_PATH=./logs/ihaveposition.log
 DBLINK=
 MODE=DEV
-HEROKULINK=
+HEROKULINK=https://{APP_NAME}.herokuapp.com/
 FROMADDRESS=
 TOADDRESS=
 GMAILAPPPW=
 SMTP=smtp.gmail.com
+FIREBASE_PROJECT_ID=
+FIREBASE_CLIENT_EMAIL=
+FIREBASE_PRIVATE_KEY=
+FIREBASE_TOKEN_URI=
 ```
 
 # Running on Cloud
@@ -63,5 +67,5 @@ The bot is now depolyed to Heroku. Before upload to Heroku you need to setting b
 
 
 # Future Functions
-- [ ] User custom setting (captial, acceptable loss, etc)
+- [Done] User custom setting (captial, acceptable loss, etc)
 - [ ] Connect to exchange for copy trading

@@ -11,4 +11,5 @@ node_modules/
 Scripts/
 share/
 pyvenv.cfg
+cert/
 logs/ihaveposition.log

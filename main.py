@@ -56,12 +56,16 @@ NAME = os.environ["NAME"]
 TOKEN = os.environ["TOKEN"]
 PORT = int(os.environ.get('PORT', 5000))
 LOG_FILE_PATH = os.environ["LOG_FILE_PATH"]
-DBLINK = os.environ["DBLINK"]
 
-
-cred = credentials.Certificate("./cert/ihaveposition.json")
+cred = credentials.Certificate({
+    "type": "service_account",
+    "project_id": os.environ['FIREBASE_PROJECT_ID'],
+    "private_key": os.environ['FIREBASE_PRIVATE_KEY'].replace('\\n', '\n'),
+    "client_email": os.environ['FIREBASE_CLIENT_EMAIL'],
+    "token_uri": os.environ['FIREBASE_TOKEN_URI'],
+})
 firebase_admin.initialize_app(cred, {
-    'databaseURL': DBLINK
+    'databaseURL': os.environ["DBLINK"]
 })
 
 # Enable logging
@@ -139,6 +143,8 @@ def future(update, context):
         orders = update.message.text
         order = orders.split("\n")
 
+        loadingMsg = update.message.reply_text("Calculating....")       
+
         for idx,line in enumerate(order):
             if (idx==0):
                m = re.search('([A-Za-z0-9]{1,})', line)
@@ -186,7 +192,7 @@ def future(update, context):
                 else:
                     res['risk'] = float(ref.get()['accepted_loss'])
                     
-        print(res)
+        # print(res)
 
         # Start Calulate perfered position
         suggested_Postion = (capital*(res['risk']/100))/(res['entry'] - res['stop'])
@@ -228,8 +234,8 @@ def future(update, context):
         if (ref.get()['vip'] and len(res['tp']) > 1):
             replyStr += "<pre>Breakdown:\n{} </pre>".format(subOrderStr)
 
-        update.message.reply_text(replyStr, parse_mode=ParseMode.HTML)
-    
+        # update.message.reply_text(replyStr, parse_mode=ParseMode.HTML)
+        loadingMsg.edit_text(replyStr, parse_mode=ParseMode.HTML)
     else:
         update.message.reply_text("Sorry! This feature not open to public!")
 
